@@ -1,0 +1,58 @@
+[
+  {
+    "id": "text_01",
+    "category": "text_qa",
+    "source_mode": "PDFs and text only",
+    "question": "What is the difference between RAG and fine-tuning?",
+    "expected_sources": [
+      "generative.txt"
+    ],
+    "should_abstain": false
+  },
+  {
+    "id": "text_02",
+    "category": "text_qa",
+    "source_mode": "PDFs and text only",
+    "question": "What are the two major stages of a RAG system?",
+    "expected_sources": [
+      "rag.txt",
+      "rag1.txt",
+      "Retrieval-Augmented Generation.pdf"
+    ],
+    "should_abstain": false
+  },
+  {
+    "id": "text_03",
+    "category": "retrieval_diagnostics",
+    "source_mode": "PDFs and text only",
+    "question": "Why might a RAG system fail to retrieve the correct passage even when it exists in its knowledge base?",
+    "expected_sources": [
+      "generative.txt",
+      "DataStorage.txt",
+      "transformer.txt",
+      "debugging.txt",
+      "rag1.txt"
+    ],
+    "should_abstain": false
+  },
+  {
+    "id": "text_04",
+    "category": "text_qa",
+    "source_mode": "PDFs and text only",
+    "question": "What are embeddings, and how are they used in retrieval?",
+    "expected_sources": [
+      "text_to_pdf_Imagetotext (8).pdf",
+      "rag.txt",
+      "DataStorage.txt"
+    ],
+    "should_abstain": false
+  },
+  {
+    "id": "safety_01",
+    "category": "unsupported_question",
+    "source_mode": "PDFs and text only",
+    "question": "Give me a recipe for chocolate cake with exact ingredient quantities.",
+    "expected_sources": [],
+    "should_abstain": true
+  }
+]

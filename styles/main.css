@@ -1,0 +1,330 @@
+
+/* =========================================
+   NEXUS AI — PROFESSIONAL DESIGN SYSTEM
+   ========================================= */
+
+/* 1. Global design variables */
+:root {
+    --bg-primary: #0B1120;
+    --bg-secondary: #111827;
+    --bg-card: #172033;
+    --bg-hover: #1E293B;
+
+    --accent: #3B82F6;
+    --accent-hover: #2563EB;
+
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+
+    --border: #263449;
+
+    --success: #22C55E;
+    --danger: #EF4444;
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+}
+
+/* 2. Main application */
+.stApp {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: "Inter", sans-serif;
+}
+
+/* 3. Main content */
+.main .block-container {
+    max-width: 1450px;
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+}
+
+/* 4. Typography */
+h1, h2, h3, h4 {
+    color: var(--text-primary) !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.4px;
+}
+
+p, label, span {
+    color: inherit;
+}
+
+[data-testid="stCaptionContainer"] {
+    color: var(--text-secondary);
+}
+
+/* 5. Sidebar */
+section[data-testid="stSidebar"] {
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+}
+
+section[data-testid="stSidebar"] > div {
+    padding-top: 2rem;
+}
+
+/* 6. Dividers */
+hr {
+    border-color: var(--border) !important;
+}
+
+/* 7. Buttons */
+.stButton > button {
+    background: var(--accent);
+    color: white;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.stButton > button:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: white;
+}
+
+/* 8. Input fields */
+.stTextInput input,
+.stTextArea textarea {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+
+.stTextInput input:focus,
+.stTextArea textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* 9. Select boxes */
+.stSelectbox div[data-baseweb="select"] > div {
+    background: var(--bg-card);
+    border-color: var(--border);
+    border-radius: var(--radius-sm);
+}
+
+/* 10. File uploader */
+[data-testid="stFileUploader"] {
+    background: var(--bg-card);
+    border: 1px dashed #475569;
+    border-radius: var(--radius-md);
+    padding: 12px;
+}
+
+/* 11. Containers */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    border-color: var(--border);
+    border-radius: var(--radius-md);
+}
+
+/* 12. Scrollbar */
+::-webkit-scrollbar {
+    width: 7px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 10px;
+}
+
+/* 13. Smooth transitions */
+.stButton,
+.stTextInput,
+.stSelectbox,
+.stTextArea {
+    transition: all 0.2s ease;
+}
+
+
+/* =========================================
+   NEXUS AI — UI REFINEMENT
+   ========================================= */
+
+/* Sidebar labels and radio buttons */
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] {
+    color: #E5E7EB !important;
+}
+
+/* Radio button labels */
+section[data-testid="stSidebar"] div[role="radiogroup"] label {
+    color: #CBD5E1 !important;
+}
+
+/* Sidebar headings */
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3 {
+    color: #F8FAFC !important;
+}
+
+/* Top toolbar */
+header[data-testid="stHeader"] {
+    background: #0B1120 !important;
+}
+
+/* Toolbar controls */
+header[data-testid="stHeader"] button {
+    color: #E5E7EB !important;
+}
+
+/* Bottom chat/input area */
+.stBottom,
+[data-testid="stBottom"] {
+    background: #0B1120 !important;
+}
+
+/* Chat input */
+[data-testid="stChatInput"] {
+    background: #172033 !important;
+    border: 1px solid #334155 !important;
+    border-radius: 14px !important;
+}
+
+/* Chat input text */
+[data-testid="stChatInput"] textarea {
+    color: #F8FAFC !important;
+    background: transparent !important;
+}
+
+/* Placeholder */
+[data-testid="stChatInput"] textarea::placeholder {
+    color: #94A3B8 !important;
+}
+
+/* General text contrast */
+.stApp p,
+.stApp label {
+    color: #CBD5E1;
+}
+
+/* Keep headings bright */
+.stApp h1,
+.stApp h2,
+.stApp h3 {
+    color: #F8FAFC !important;
+}
+
+
+/* ---------- Chat input visibility fix ---------- */
+
+[data-testid="stChatInput"] {
+    background-color: #1E293B !important;
+    border: 1px solid #475569 !important;
+    border-radius: 14px !important;
+}
+
+[data-testid="stChatInput"] textarea {
+    background-color: #1E293B !important;
+    color: #FFFFFF !important;
+    -webkit-text-fill-color: #FFFFFF !important;
+    caret-color: #FFFFFF !important;
+}
+
+[data-testid="stChatInput"] textarea::placeholder {
+    color: #CBD5E1 !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stChatInput"] button {
+    color: #FFFFFF !important;
+}
+
+
+
+/* ---------- Complete Chat Input Styling ---------- */
+
+/* Entire chat input box */
+[data-testid="stChatInput"] {
+    background-color: #E2E8F0 !important;
+    border: 1px solid #94A3B8 !important;
+    border-radius: 14px !important;
+}
+
+/* Text area */
+[data-testid="stChatInput"] textarea {
+    background-color: #E2E8F0 !important;
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    caret-color: #000000 !important;
+}
+
+/* Placeholder text */
+[data-testid="stChatInput"] textarea::placeholder {
+    color: #475569 !important;
+    opacity: 1 !important;
+}
+
+/* Plus and other chat buttons */
+[data-testid="stChatInput"] button {
+    background-color: #E2E8F0 !important;
+    color: #000000 !important;
+    border: none !important;
+}
+
+/* Button hover */
+[data-testid="stChatInput"] button:hover {
+    background-color: #CBD5E1 !important;
+}
+
+
+
+
+/* =========================================
+   14. CHAT MESSAGE READABILITY
+   ========================================= */
+
+[data-testid="stChatMessage"] {
+    background: #111C2E !important;
+    border: 1px solid #334155 !important;
+    border-radius: 14px !important;
+    padding: 16px !important;
+    margin-bottom: 14px !important;
+}
+
+/* Main message text */
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] {
+    color: #E2E8F0 !important;
+    font-size: 15px !important;
+    line-height: 1.75 !important;
+}
+
+/* Paragraphs and bullet points */
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] li {
+    color: #E2E8F0 !important;
+    line-height: 1.75 !important;
+}
+
+/* Headings */
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] h1,
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] h2,
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] h3,
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] strong {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* Lists */
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] ol,
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] ul {
+    padding-left: 25px !important;
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
+}
+
+/* Links */
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] a {
+    color: #60A5FA !important;
+}

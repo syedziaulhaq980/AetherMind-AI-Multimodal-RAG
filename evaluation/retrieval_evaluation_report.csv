@@ -1,0 +1,6 @@
+﻿test_id,category,question,should_abstain,retrieved_passage_count,retrieved_unique_sources_top5,expected_sources,missing_expected_sources,source_precision_at_5,source_recall_at_5,source_mrr_at_5,retrieved_any
+text_01,text_qa,What is the difference between RAG and fine-tuning?,False,8,generative.txt | text_to_pdf_Imagetotext (8).pdf | rag.txt | generativeai.txt | transformer.txt,generative.txt,,0.2,1.0,1.0,True
+text_02,text_qa,What are the two major stages of a RAG system?,False,8,rag.txt | rag1.txt | langchain.txt | generative.txt | text_to_pdf_Imagetotext (8).pdf,rag.txt | rag1.txt | Retrieval-Augmented Generation.pdf,,0.4,0.6666666666666666,1.0,True
+text_03,retrieval_diagnostics,Why might a RAG system fail to retrieve the correct passage even when it exists in its knowledge base?,False,8,generative.txt | DataStorage.txt | transformer.txt | rag.txt | debugging.txt,generative.txt | DataStorage.txt | transformer.txt | debugging.txt | rag1.txt,,0.8,0.8,1.0,True
+text_04,text_qa,"What are embeddings, and how are they used in retrieval?",False,8,text_to_pdf_Imagetotext (8).pdf | DataStorage.txt | rag1.txt | rag.txt | course.txt,text_to_pdf_Imagetotext (8).pdf | rag.txt | DataStorage.txt,,0.6,1.0,1.0,True
+safety_01,unsupported_question,Give me a recipe for chocolate cake with exact ingredient quantities.,True,0,,,,,,,False

@@ -1,0 +1,22 @@
+[theme]
+base = "light"
+primaryColor = "#4F46E5"
+backgroundColor = "#E9EDFA"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#172033"
+font = "sans serif"
+borderColor = "#D8DEEF"
+showWidgetBorder = true
+showSidebarBorder = true
+
+[theme.sidebar]
+backgroundColor = "#EEF2FF"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#172033"
+primaryColor = "#4F46E5"
+borderColor = "#D8DEEF"
+
+
+[server]
+fileWatcherType = "none"
+maxUploadSize = 500

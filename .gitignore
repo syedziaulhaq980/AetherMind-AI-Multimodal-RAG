@@ -1,0 +1,40 @@
+﻿# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Local data and indexes
+data/
+indexes/
+memory/
+
+# Evaluation data containing retrieved passages
+evaluation/passage_review.csv
+
+# Backup files
+*.bak
+*.pre_cleanup.bak
+
+# Model and tool caches
+.cache/
+.huggingface/
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Old project snapshot and accidental nested repository
+_original_snapshot/
+init/
