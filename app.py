@@ -40,14 +40,11 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
-
 # Maximum decoded image size: 25 million pixels.
 Image.MAX_IMAGE_PIXELS = 25_000_000
 # Maximum uploaded video size: 300 MB.
 MAX_VIDEO_SIZE_MB = 300
 MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024
-
-
 
 
 def format_video_timestamp(seconds: float) -> str:
@@ -171,6 +168,15 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 try:
+    from src.multimodal_rag.core.understanding.context_interpreter import (
+        interpret_conversation_context,
+    )
+    from src.multimodal_rag.core.understanding.intent_planner import (
+        build_execution_context,
+    )
+    from src.multimodal_rag.core.understanding.plan_validator import (
+        check_execution_readiness,
+    )
     from src.multimodal_rag.core import backend as rag
     from src.multimodal_rag.ingestion import (
         process_video_file,
@@ -215,6 +221,7 @@ for state_key, default_value in SESSION_DEFAULTS.items():
             if isinstance(default_value, (dict, list))
             else default_value
         )
+
 
 def ingest_timestamped_transcript(
     transcript_text: str,
@@ -293,7 +300,8 @@ def ingest_timestamped_transcript(
             "Expected timestamps such as [0:12] or [1:02:15]."
         )
 
-    # Group adjacent timestamped segments into chunks of roughly 1,200 characters.
+    # Group adjacent timestamped segments into chunks of roughly 1,200
+    # characters.
     target_chunk_chars = 1200
     grouped: list[list[dict[str, Any]]] = []
     current_group: list[dict[str, Any]] = []
@@ -398,9 +406,9 @@ say so honestly. Avoid repetition. Use specific visual evidence.
                     "temperature": 0.1,
                     "num_predict": 500,
                 },
-               },
+            },
             timeout=(10, 180),
-           )
+        )
 
         response.raise_for_status()
 
@@ -412,12 +420,14 @@ say so honestly. Avoid repetition. Use specific visual evidence.
             ) from exc
 
         if not isinstance(payload, dict):
-            raise RuntimeError("Ollama returned an unexpected response format.")
+            raise RuntimeError(
+                "Ollama returned an unexpected response format.")
 
         message = payload.get("message")
 
         if not isinstance(message, dict):
-            raise RuntimeError("Ollama response is missing the message object.")
+            raise RuntimeError(
+                "Ollama response is missing the message object.")
 
         description = message.get("content", "")
 
@@ -465,7 +475,6 @@ say so honestly. Avoid repetition. Use specific visual evidence.
         ) from exc
 
 
-
 def page_label(doc: Any, position: int) -> str:
     """Return a human-readable page label for a loaded document chunk."""
     metadata = getattr(doc, "metadata", {}) or {}
@@ -481,8 +490,6 @@ def page_label(doc: Any, position: int) -> str:
     return f"Text section {position}"
 
 
-
-
 def render_sources(source_records: list[dict[str, Any]]) -> None:
     """Render readable evidence cards with original file names and page/timestamp labels."""
     if not source_records:
@@ -492,7 +499,8 @@ def render_sources(source_records: list[dict[str, Any]]) -> None:
         for source in source_records:
             info = source.get("info", {})
             doc = source.get("doc")
-            metadata = (getattr(doc, "metadata", {}) or {}) if doc is not None else {}
+            metadata = (getattr(doc, "metadata", {})
+                        or {}) if doc is not None else {}
 
             source_name = (
                 metadata.get("uploaded_file_name")
@@ -520,14 +528,17 @@ def render_sources(source_records: list[dict[str, Any]]) -> None:
                     total_seconds = max(0, int(float(seconds)))
                     hours, remainder = divmod(total_seconds, 3600)
                     minutes, secs = divmod(remainder, 60)
-                    st.caption(f"Video timestamp: {hours:02d}:{minutes:02d}:{secs:02d}")
+                    st.caption(
+                        f"Video timestamp: {hours:02d}:{minutes:02d}:{secs:02d}")
 
                 if doc is not None:
                     passage = (doc.page_content or "").strip()
-                    st.text(passage[:2500] + ("\n\n[Passage shortened for display.]" if len(passage) > 2500 else ""))
+                    st.text(
+                        passage[:2500] + ("\n\n[Passage shortened for display.]" if len(passage) > 2500 else ""))
 
 
-def source_record(source_id: int, doc: Any, distance: float | None = None) -> dict[str, Any]:
+def source_record(source_id: int, doc: Any, distance: float |
+                  None = None) -> dict[str, Any]:
     metadata = getattr(doc, "metadata", {}) or {}
     try:
         info = rag.get_source_info(doc)
@@ -542,15 +553,22 @@ def source_record(source_id: int, doc: Any, distance: float | None = None) -> di
         or "Unknown source"
     )
     info = dict(info)
-    info["name"] = Path(str(stable_name)).name if metadata.get("uploaded_file_name") else stable_name
+    info["name"] = Path(str(stable_name)).name if metadata.get(
+        "uploaded_file_name") else stable_name
     info.setdefault("language", metadata.get("language", "Unknown"))
     return {"id": source_id, "doc": doc, "distance": distance, "info": info}
 
 
-def validate_inline_citations(answer: str, source_records: list[dict[str, Any]]) -> tuple[bool, str | None]:
+def validate_inline_citations(
+        answer: str, source_records: list[dict[str, Any]]) -> tuple[bool, str | None]:
     """Validate citation labels used in the prompt: [Source 1], [Source 2], etc."""
-    available_ids = {int(item["id"]) for item in source_records if "id" in item}
-    cited_ids = {int(value) for value in re.findall(r"\[\s*Source\s+(\d+)\s*\]", answer, flags=re.IGNORECASE)}
+    available_ids = {int(item["id"])
+                     for item in source_records if "id" in item}
+    cited_ids = {
+        int(value) for value in re.findall(
+            r"\[\s*Source\s+(\d+)\s*\]",
+            answer,
+            flags=re.IGNORECASE)}
 
     if not cited_ids:
         return False, "The model did not include inline citations such as [Source 1]. Review the source passages below."
@@ -563,7 +581,8 @@ def validate_inline_citations(answer: str, source_records: list[dict[str, Any]])
     return True, None
 
 
-def page_context_and_records(filename: str) -> tuple[str, list[dict[str, Any]]]:
+def page_context_and_records(
+        filename: str) -> tuple[str, list[dict[str, Any]]]:
     """Build cited context from all extracted pages for the selected document."""
 
     pages = st.session_state.uploaded_document_pages.get(filename, [])
@@ -604,6 +623,7 @@ def summarize_document_batch(
     filename: str,
     batch_context: str,
     task_mode: str,
+    question_context: dict[str, Any] | None = None,
 ) -> str:
     """Summarize each source independently and attach citations programmatically."""
 
@@ -620,6 +640,43 @@ def summarize_document_batch(
 
     if not source_blocks:
         raise ValueError("No source blocks found in batch evidence.")
+
+    # Extract the user's original instructions and validated response plan.
+    original_question = ""
+    normalized_query = ""
+    requested_count = None
+    response_format = "bullet_list"
+    detail_level = "appropriate"
+
+    if isinstance(question_context, dict):
+
+        original_question = question_context.get(
+            "original_question", ""
+        )
+
+        normalized_query = question_context.get(
+            "normalized_query", ""
+        )
+
+        execution_plan = question_context.get(
+            "execution_context", {}
+        )
+
+        response_plan = (
+            execution_plan.get("response_plan", {})
+            if isinstance(execution_plan, dict)
+            else {}
+        )
+
+        requested_count = response_plan.get("requested_count")
+
+        response_format = response_plan.get(
+            "format", "bullet_list"
+        )
+
+        detail_level = response_plan.get(
+            "detail_level", "appropriate"
+        )
 
     formatted_sections = []
 
@@ -644,6 +701,21 @@ DOCUMENT:
 TASK:
 {task_mode}
 
+CONTEXT-RESOLVED TASK:
+{normalized_query or task_mode}
+
+ORIGINAL USER INSTRUCTIONS:
+{original_question or task_mode}
+
+REQUESTED NUMBER OF POINTS:
+{requested_count if requested_count is not None else "Not specified"}
+
+RESPONSE FORMAT:
+{response_format}
+
+DETAIL LEVEL:
+{detail_level}
+
 SOURCE EVIDENCE:
 {source_block}
 
@@ -653,10 +725,13 @@ INSTRUCTIONS:
 2. Use only facts explicitly supported by this passage.
 3. Preserve important definitions, concepts, processes and findings.
 4. Do not introduce outside knowledge.
-5. Produce concise, informative bullet points.
-6. Remove repeated or duplicate information.
-7. If this source contains no useful information, return an empty points list.
-8. Do not generate citations or academic references.
+5. Follow the original user's requested response format and detail level.
+6. If a number of points is requested, aim to respect that number
+   while remaining faithful to the available source evidence.
+7. Produce informative points appropriate to the requested detail level.
+8. Remove repeated or duplicate information.
+9. If this source contains no useful information, return an empty points list.
+10. Do not generate citations or academic references.
 
 OUTPUT REQUIREMENTS:
 
@@ -751,12 +826,11 @@ Return JSON only.
     return final_summary
 
 
-
-
 def summarize_document_in_batches(
     filename: str,
     task_mode: str,
     batch_size: int = 5,
+    question_context: dict[str, Any] | None = None,
 ) -> list[str]:
     """Summarize a document in batches of pages."""
 
@@ -797,6 +871,7 @@ def summarize_document_in_batches(
             filename,
             batch_context,
             task_mode,
+            question_context=question_context,
         )
 
         batch_summaries.append(batch_summary)
@@ -804,10 +879,10 @@ def summarize_document_in_batches(
     return batch_summaries
 
 
-
 def summarize_selected_document(
     filename: str,
     task_mode: str,
+    question_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Summarize a document using Map-Reduce."""
 
@@ -843,6 +918,7 @@ def summarize_selected_document(
             filename=filename,
             task_mode=task_mode,
             batch_size=3,
+            question_context=question_context,
         )
 
         if not batch_summaries:
@@ -888,7 +964,7 @@ def summarize_selected_document(
 
         print("Total Reduce batches:", len(reduce_batches))
 
-                # REDUCE STAGE: Organize points batch by batch.
+        # REDUCE STAGE: Organize points batch by batch.
 
         organized_sections = []
         heading_lookup = {}
@@ -971,7 +1047,6 @@ Return JSON only.
                 for item in point_batch
             }
 
-            
             # Validate and recover original point IDs.
             seen_ids = set()
             normalized_sections = []
@@ -1029,7 +1104,6 @@ Return JSON only.
                 f"Validated and recovered Reduce batch {batch_number}"
             )
 
-
             # Merge sections with identical headings.
             for section in sections:
 
@@ -1086,8 +1160,38 @@ Return JSON only.
             )
 
         # Python restores original text and citations.
-        
-        # Python restores original text and citations.
+
+        # The validated response plan controls presentation only.
+
+        execution_plan = (
+            question_context.get("execution_context", {})
+            if isinstance(question_context, dict)
+            else {}
+        )
+
+        response_plan = (
+            execution_plan.get("response_plan", {})
+            if isinstance(execution_plan, dict)
+            else {}
+       )
+
+        response_format = response_plan.get(
+            "format",
+            "bullet_list",
+       )
+
+        supported_formats = {
+            "paragraph",
+            "numbered_list",
+            "bullet_list",
+            "table",
+            "structured",
+       }
+
+        if response_format not in supported_formats:
+            response_format = "bullet_list"
+
+
         answer_sections = []
         seen_point_texts = set()
 
@@ -1105,19 +1209,64 @@ Return JSON only.
                     section_points.append(item)
 
             if not section_points:
+               continue
+
+            if response_format == "paragraph":
+
+                section_text = " ".join(
+                    f"{item['text']} [Source {item['source_id']}]"
+                    for item in section_points
+              )
+
+            elif response_format == "numbered_list":
+
+                section_text = "\n".join(
+                    f"{index}. {item['text']} [Source {item['source_id']}]"
+                    for index, item in enumerate(
+                        section_points,
+                        start=1,
+                    )
+                )
+
+            elif response_format == "table":
+
+                table_rows = [
+                    "| Topic | Evidence |",
+                    "|---|---|",
+               ]
+
+                for item in section_points:
+
+                    safe_text = (
+                        item["text"]
+                        .replace("|", "\\|")
+                        .replace("\n", " ")
+                    )
+
+                    table_rows.append(
+                        f"| {section['heading']} | "
+                        f"{safe_text} [Source {item['source_id']}] |"
+                  )
+
+                answer_sections.append(
+                   "\n".join(table_rows)
+               )
+
                 continue
 
-
-            section_text = "\n".join(
-                f"- {item['text']} [Source {item['source_id']}]"
-                for item in section_points
-            )
+            else:
+                # bullet_list and structured formats
+                section_text = "\n".join(
+                    f"- {item['text']} [Source {item['source_id']}]"
+                    for item in section_points
+               )
 
             answer_sections.append(
                 f"### {section['heading']}\n\n{section_text}"
-            )
+           )
 
         answer = "\n\n".join(answer_sections)
+
 
         print("\n========== FINAL CITED SUMMARY ==========")
         print(answer[:8000])
@@ -1164,9 +1313,17 @@ Return JSON only.
 def answer_from_selected_document(
     question: str,
     filename: str,
+    question_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Answer using only the most relevant passages from the selected file."""
     document_store = st.session_state.get("document_vectorstore")
+
+    # Use the context-resolved question when available.
+    retrieval_question = (
+        question_context.get("normalized_query", question)
+        if question_context
+        else question
+    )
 
     if document_store is None:
         return {
@@ -1180,7 +1337,7 @@ def answer_from_selected_document(
 
         # Retrieve relevant passages from this document only.
         relevant = document_store.similarity_search_with_score(
-            question,
+            retrieval_question,
             k=rag.TOP_K,
             filter={"uploaded_file_name": filename},
             fetch_k=max(rag.TOP_K * 10, 50),
@@ -1224,7 +1381,6 @@ def answer_from_selected_document(
         print("QUESTION:", question)
         print(context)
         print("==================================================\n")
-
 
         # Restrict generated citations to the retrieved source records.
         allowed_source_ids = sorted(
@@ -1274,7 +1430,10 @@ IMPORTANT QUESTION-SCOPE RULES:
 4. Do not generate a document summary unless explicitly requested.
 5. Do not introduce unrelated topics or unsupported facts.
 
-QUESTION:
+CONTEXT-RESOLVED QUESTION:
+{retrieval_question}
+
+ORIGINAL USER INSTRUCTIONS:
 {question}
 
 DOCUMENT EVIDENCE:
@@ -1386,7 +1545,6 @@ Return JSON only. Do not include Markdown or explanatory text.
         print("Validation warning:", citation_warning)
         print("=======================================================\n")
 
-        
         if not citations_valid:
             return {
                 "answer": (
@@ -1407,8 +1565,6 @@ Return JSON only. Do not include Markdown or explanatory text.
             "generation_seconds": perf_counter() - started,
             "retrieval_count": len(records),
         }
-
-
 
     except requests.exceptions.ConnectionError:
         return {
@@ -1436,6 +1592,8 @@ Return JSON only. Do not include Markdown or explanatory text.
             "sources": [],
             "warning": None,
         }
+
+
 @st.cache_resource(show_spinner="Loading retrieval reranker...")
 def load_reranker() -> CrossEncoder:
     """Load the reranker once and reuse it across Streamlit reruns."""
@@ -1445,6 +1603,117 @@ def load_reranker() -> CrossEncoder:
         device="cpu",
     )
 
+
+def _get_faiss_documents(store: Any) -> list[Any]:
+    """Safely read documents from an existing FAISS docstore."""
+
+    if store is None:
+        return []
+
+    docstore = getattr(store, "docstore", None)
+    documents = getattr(docstore, "_dict", None)
+
+    if not isinstance(documents, dict):
+        return []
+
+    return list(documents.values())
+
+
+def get_available_evidence_sources(
+    selected_document: str | None = None,
+    selected_only: bool = False,
+) -> dict[str, Any]:
+    """
+    Inspect existing evidence stores without modifying or searching them.
+
+    Returns modality availability flags and document counts.
+    """
+
+    # 1. Permanent knowledge base.
+    permanent_documents = _get_faiss_documents(
+        getattr(rag, "vectorstore", None)
+    )
+
+    # 2. Session-uploaded documents.
+    session_document_store = st.session_state.get(
+        "document_vectorstore"
+    )
+    session_documents = _get_faiss_documents(
+        session_document_store
+    )
+
+    session_documents = [
+        doc
+        for doc in session_documents
+        if (doc.metadata or {}).get("media_type")
+        == "uploaded_document"
+    ]
+
+    uploaded_pages = st.session_state.get(
+        "uploaded_document_pages", {}
+    )
+
+    if not isinstance(uploaded_pages, dict):
+        uploaded_pages = {}
+
+    if selected_only:
+        selected_pages = uploaded_pages.get(selected_document, [])
+        document_available = (
+            bool(selected_document)
+            and isinstance(selected_pages, list)
+            and len(selected_pages) > 0
+        )
+        document_count = len(selected_pages) if document_available else 0
+    else:
+        document_available = bool(
+            permanent_documents or session_documents
+        )
+        document_count = (
+            len(permanent_documents) + len(session_documents)
+        )
+
+    # 3. Session-uploaded images.
+    image_documents = _get_faiss_documents(
+        st.session_state.get("image_vectorstore")
+    )
+
+    image_documents = [
+        doc
+        for doc in image_documents
+        if (doc.metadata or {}).get("media_type")
+        == "image_description"
+    ]
+
+    # 4. Session-uploaded video evidence.
+    video_documents = _get_faiss_documents(
+        st.session_state.get("video_vectorstore")
+    )
+
+    transcript_documents = [
+        doc
+        for doc in video_documents
+        if (doc.metadata or {}).get("media_type")
+        == "video_transcript"
+    ]
+
+    frame_documents = [
+        doc
+        for doc in video_documents
+        if (doc.metadata or {}).get("media_type")
+        == "video_frame_description"
+    ]
+
+    return {
+        "document": document_available,
+        "image": bool(image_documents),
+        "video_transcript": bool(transcript_documents),
+        "video_frames": bool(frame_documents),
+
+        "document_count": document_count,
+        "image_count": len(image_documents),
+        "video_transcript_count": len(transcript_documents),
+        "video_frame_count": len(frame_documents),
+    }
 
 
 def retrieve_for_question(question: str) -> list[tuple[Any, float]]:
@@ -1474,19 +1743,19 @@ def retrieve_for_question(question: str) -> list[tuple[Any, float]]:
         document_store = st.session_state.get("document_vectorstore")
 
         if document_store is not None:
-           print("\n========== SESSION DOCUMENT STORE ==========")
-           print("Stored documents:", len(document_store.docstore._dict))
+            print("\n========== SESSION DOCUMENT STORE ==========")
+            print("Stored documents:", len(document_store.docstore._dict))
 
-           for doc in document_store.docstore._dict.values():
-               print("Metadata:", doc.metadata)
-               print("Content:", doc.page_content[:500])
+            for doc in document_store.docstore._dict.values():
+                print("Metadata:", doc.metadata)
+                print("Content:", doc.page_content[:500])
 
-           print("========== END SESSION DOCUMENT STORE ==========")
+            print("========== END SESSION DOCUMENT STORE ==========")
 
-           candidates.extend(
-               document_store.similarity_search_with_score(
-                  question,
-                  k=candidate_k,
+            candidates.extend(
+                document_store.similarity_search_with_score(
+                    question,
+                    k=candidate_k,
                 )
 
             )
@@ -1525,9 +1794,9 @@ def retrieve_for_question(question: str) -> list[tuple[Any, float]]:
 
         if video_store is not None:
             video_results = video_store.similarity_search_with_score(
-            question,
-            k=candidate_k,
-        )
+                question,
+                k=candidate_k,
+            )
 
             print("\n[VIDEO STORE DIAGNOSTIC]")
             print(f"Question: {question}")
@@ -1614,25 +1883,39 @@ def retrieve_for_question(question: str) -> list[tuple[Any, float]]:
     # Preserve the existing threshold for non-video sources.
     video_threshold = 1.50
 
-
-    # Detect video summary and speaker-discussion questions.
+    # Detect video summary, description and speaker-discussion questions.
     is_video_transcript_question = bool(
-    re.search(
-        r"\b(summarize|summarise|summary|overview|speaker|speakers|"
-        r"discuss|discussing|talk|talking|conversation|transcript)\b",
-        question,
-        flags=re.IGNORECASE,
+        re.search(
+            r"\b(summarize|summarise|summary|overview|speaker|speakers|"
+            r"discuss|discussing|talk|talking|conversation|transcript)\b"
+            r"|"
+            r"\b(describe|describes|describing|description|explain|"
+            r"explains|explaining|about|content)\b.{0,60}"
+            r"\b(video|clip|recording)\b"
+            r"|"
+            r"\b(video|clip|recording)\b.{0,60}"
+            r"\b(describe|describes|describing|description|explain|"
+            r"explains|explaining|about|content)\b",
+            question,
+            flags=re.IGNORECASE,
         )
     )
 
-
-    # Detect questions that require both discussion and visual evidence.
+    # Detect questions requiring both transcript and visual evidence.
     is_video_visual_question = bool(
         re.search(
             r"\b(visual|visually|frame|frames|"
             r"visual event|visual events|"
             r"timestamp|timestamps|on screen|"
-            r"what happens in the video)\b",
+            r"what happens in the video)\b"
+            r"|"
+            r"\b(describe|describes|describing|description|explain|"
+            r"explains|explaining|about|content)\b.{0,60}"
+            r"\b(video|clip|recording)\b"
+            r"|"
+            r"\b(video|clip|recording)\b.{0,60}"
+            r"\b(describe|describes|describing|description|explain|"
+            r"explains|explaining|about|content)\b",
             question,
             flags=re.IGNORECASE,
         )
@@ -1717,7 +2000,6 @@ def retrieve_for_question(question: str) -> list[tuple[Any, float]]:
         for doc, _ in unique_candidates
     ]
 
-
     scores = reranker.predict(
         pairs,
         batch_size=8,
@@ -1731,7 +2013,7 @@ def retrieve_for_question(question: str) -> list[tuple[Any, float]]:
         reverse=True,
     )
 
-        # For speaker questions, use transcript evidence only.
+    # For speaker questions, use transcript evidence only.
     is_speaker_question = any(
         phrase in question.lower()
         for phrase in (
@@ -1755,7 +2037,6 @@ def retrieve_for_question(question: str) -> list[tuple[Any, float]]:
             item for item in reranked
             if id(item[0][0]) in transcript_ids
         ]
-
 
     # For video questions involving visual events, select
     # transcript passages and their matching video frames.
@@ -1853,7 +2134,6 @@ def retrieve_for_question(question: str) -> list[tuple[Any, float]]:
             )
         )
 
-
     print("\n========== FINAL EVIDENCE ORDER ==========", flush=True)
 
     for rank, ((doc, distance), score) in enumerate(reranked, start=1):
@@ -1925,16 +2205,29 @@ def get_combined_memory_context() -> str:
     return "\n\n".join(sections)
 
 
-
-
-def answer_question(question: str, selected_document: str | None, question_scope: str) -> dict[str, Any]:
+def answer_question(question: str,
+                    selected_document: str | None,
+                    question_scope: str,
+                    question_context: dict[str,
+                                           Any] | None = None,
+                    ) -> dict[str,
+                              Any]:
     """Answer using the selected file or use similarity search across enabled sources."""
+    # Use the context-resolved question for retrieval and generation.
+    retrieval_question = (
+        question_context.get("normalized_query", question)
+        if question_context
+        else question
+    )
     if question_scope == "Selected document" and selected_document:
-        return answer_from_selected_document(question, selected_document)
+        return answer_from_selected_document(
+            question,
+            selected_document,
+            question_context=question_context,
+        )
 
     try:
-        relevant = retrieve_for_question(question)
-
+        relevant = retrieve_for_question(retrieval_question)
 
     except Exception as exc:
         traceback.print_exc()
@@ -1948,9 +2241,6 @@ def answer_question(question: str, selected_document: str | None, question_scope
             "sources": [],
             "warning": None,
         }
-
-
-
 
     if not relevant:
         chat_history = get_combined_memory_context()
@@ -1994,7 +2284,10 @@ Rules:
 CONVERSATION HISTORY:
 {chat_history}
 
-CURRENT QUESTION:
+CONTEXT-RESOLVED QUESTION:
+{retrieval_question}
+
+ORIGINAL USER INSTRUCTIONS:
 {question}
 """
 
@@ -2028,9 +2321,8 @@ CURRENT QUESTION:
 
             return {
                 "answer": (
-                       "I couldn't generate an answer from the conversation history "
-                       "because an internal error occurred. Please try again."
-                    ),
+                    "I couldn't generate an answer from the conversation history "
+                    "because an internal error occurred. Please try again."),
                 "warning": "Conversation-history answer generation failed.",
                 "sources": [],
                 "warning": "Ollama is currently unavailable.",
@@ -2041,8 +2333,6 @@ CURRENT QUESTION:
     context_parts = []
     records = []
 
-
-
     context_parts: list[str] = []
     records: list[dict[str, Any]] = []
     for source_id, (doc, distance) in enumerate(relevant, start=1):
@@ -2050,8 +2340,7 @@ CURRENT QUESTION:
         info = record["info"]
         context_parts.append(
             f"[Source {source_id}]\nDocument: {info.get('name', 'Unknown source')}\n"
-            f"Language: {info.get('language', 'Unknown')}\nPassage:\n{doc.page_content}"
-        )
+            f"Language: {info.get('language', 'Unknown')}\nPassage:\n{doc.page_content}")
         records.append(record)
     print("\n========== EVIDENCE SENT TO OLLAMA ==========")
     print(f"Question: {question}")
@@ -2080,33 +2369,40 @@ CURRENT QUESTION:
             "The history provides conversational context, not documentary evidence. "
             "For factual answers about the indexed documents, rely on the "
             "retrieved passages. Do not treat previous assistant answers as "
-            "verified document evidence. Answer the current question directly."
-        )
+            "verified document evidence. Answer the current question directly.")
 
-    prompt = rag.build_prompt("\n\n".join(context_parts), question)
-    prompt += history_instruction
+    prompt = rag.build_prompt(
+        "\n\n".join(context_parts),
+        retrieval_question,
+    )
 
     prompt += (
-           "\n\nEVIDENCE-GROUNDING REQUIREMENTS:\n"
-           "1. Answer using only information explicitly supported by the retrieved passages.\n"
-           "2. Distinguish between questions, opinions, hypotheses, "
-           "examples, and factual explanations.\n"
-           "3. A question mentioning a topic does not prove an answer "
-           "about that topic.\n"
-           "4. Do not convert a question, suggestion, or incomplete "
-           "statement into an established fact.\n"
-           "5. Do not add scientific facts or background knowledge "
-           "that the retrieved passages do not establish.\n"
-           "6. If a passage introduces a topic but does not explain it, "
-           "state that the topic is mentioned but not explained "
-           "in the available evidence.\n"
-           "7. Never strengthen a claim beyond what its supporting "
-           "passage actually says.\n"
-           "8. Cite every factual claim using exact labels such as "
-           "[Source 1]. Use only source labels supplied in the context.\n"
-           "9. If the evidence does not support an answer, clearly "
-           "state that the available evidence is insufficient."
-        )
+        "\n\nORIGINAL USER INSTRUCTIONS:\n"
+        f"{question}\n\n"
+        "Answer the context-resolved question while preserving "
+        "the original user's requested format, count, and level of detail."
+    )
+    prompt += history_instruction
+
+    prompt += ("\n\nEVIDENCE-GROUNDING REQUIREMENTS:\n"
+               "1. Answer using only information explicitly supported by the retrieved passages.\n"
+               "2. Distinguish between questions, opinions, hypotheses, "
+               "examples, and factual explanations.\n"
+               "3. A question mentioning a topic does not prove an answer "
+               "about that topic.\n"
+               "4. Do not convert a question, suggestion, or incomplete "
+               "statement into an established fact.\n"
+               "5. Do not add scientific facts or background knowledge "
+               "that the retrieved passages do not establish.\n"
+               "6. If a passage introduces a topic but does not explain it, "
+               "state that the topic is mentioned but not explained "
+               "in the available evidence.\n"
+               "7. Never strengthen a claim beyond what its supporting "
+               "passage actually says.\n"
+               "8. Cite every factual claim using exact labels such as "
+               "[Source 1]. Use only source labels supplied in the context.\n"
+               "9. If the evidence does not support an answer, clearly "
+               "state that the available evidence is insufficient.")
 
     try:
         # Extract source labels from the existing prompt.
@@ -2121,7 +2417,16 @@ CURRENT QUESTION:
             raise ValueError(
                 "No labeled source passages found in the RAG prompt."
             )
-                # Require more detail for process and workflow questions.
+
+        # Detect whether the retrieved evidence contains uploaded video.
+        has_video_evidence = any(
+            (record.get("doc").metadata or {}).get("media_type")
+            in ("video_transcript", "video_frame_description")
+            for record in records
+            if record.get("doc") is not None
+        )
+
+        # Require more detail for process and workflow questions.
         is_process_question = bool(
             re.search(
                 r"\b(what happens|steps?|stages?|pipeline|workflow|"
@@ -2139,14 +2444,31 @@ CURRENT QUESTION:
             )
         )
 
+        is_video_description_request = bool(
+            has_video_evidence
+            and re.search(
+                r"\b(describe|describes|describing|description|"
+                r"explain|explains|explaining)\b.{0,60}"
+                r"\b(video|clip|recording)\b"
+                r"|"
+                r"\b(video|clip|recording)\b.{0,60}"
+                r"\b(describe|describes|describing|description|"
+                r"explain|explains|explaining)\b",
+                question,
+                flags=re.IGNORECASE,
+            )
+        )
+
         is_video_transcript_question = bool(
             re.search(
-            r"\b(summarize|summarise|summary|overview|speaker|speakers|"
-            r"discuss|discussing|talk|talking|conversation|transcript)\b",
-            question,
-            flags=re.IGNORECASE,
+                r"\b(summarize|summarise|summary|overview|speaker|speakers|"
+                r"discuss|discussing|talk|talking|conversation|transcript)\b",
+                question,
+                flags=re.IGNORECASE,
+            )
+            or is_video_description_request
         )
-    )
+
         is_explanatory_question = bool(
             re.search(
                 r"\b(why|explain|what causes|what factors|reasons?)\b",
@@ -2157,17 +2479,23 @@ CURRENT QUESTION:
 
         minimum_claims = 1
 
+        maximum_claims = 1
 
+        if is_process_question or is_video_summary_request:
+            maximum_claims = 4
 
-        maximum_claims = (
-           4
-           if (
-                is_process_question
-                or is_video_summary_request
-                or is_video_transcript_question
+        if is_video_description_request:
+            requested_count = re.search(
+                r"\b(\d{1,2})\s+(?:bullet\s+points?|points?|items?)\b",
+                question,
+                flags=re.IGNORECASE,
             )
-            else 1
-        )
+
+            if requested_count:
+                maximum_claims = min(int(requested_count.group(1)), 10)
+            else:
+                maximum_claims = 4
+
         # Require each factual claim to identify its supporting sources.
         answer_schema: dict[str, Any] = {
             "type": "object",
@@ -2185,7 +2513,7 @@ CURRENT QUESTION:
                                     "enum": allowed_source_ids,
                                 },
                                 "minItems": 1,
-                                "maxItems":3,
+                                "maxItems": 3,
                                 "uniqueItems": True,
                             },
                         },
@@ -2193,99 +2521,83 @@ CURRENT QUESTION:
                         "additionalProperties": False,
                     },
                     "minItems": 1,
-                    "maxItems":maximum_claims,
+                    "maxItems": maximum_claims,
                 }
             },
             "required": ["claims"],
             "additionalProperties": False,
         }
 
-
-
-
-
-
         structured_prompt = (
-    f"{prompt}\n\n"
-    "STRUCTURED RESPONSE REQUIREMENT:\n"
-    "Return valid JSON matching the provided schema.\n\n"
-
-    "ANSWER REQUIREMENTS:\n"
-    "1. Answer the user's actual question directly.\n"
-    "2. Never repeat, paraphrase, or return the user's question as the answer.\n"
-    "3. Each claim's 'text' field must contain useful, informative content "
-    "that answers the question, not a question or a restatement.\n"
-    "4. For 'why' questions, explain reasons stated in the evidence. "
-    "Do not invent causes or mechanisms.\n"
-    "5. Prefer the most directly relevant evidence over loosely related passages.\n"
-    "6. Avoid vague claims, repetition, and unsupported interpretations.\n"
-    "7. Every claim must communicate a distinct fact or idea. "
-    "Do not restate the same idea using different words.\n"
-    "8. Do not force extra claims when the evidence supports fewer claims.\n"
-    "8. For process questions, explain steps in order only when the "
-    "retrieved passages establish that order.\n"
-    "9. Before returning JSON, verify that each claim answers the question "
-    "and is supported by its assigned source.\n\n"
-
-    "EVIDENCE REQUIREMENTS:\n"
-    "1. Use only the supplied retrieved passages as factual evidence.\n"
-    "2. Every claim must be directly supported by its assigned source.\n"
-    "3. A valid source ID does not mean the claim is supported.\n"
-    "4. Do not add causes, mechanisms, conclusions, recommendations, or "
-    "examples unless the assigned passage supports them.\n"
-    "5. Do not use general knowledge to fill gaps in the evidence.\n"
-    "6. Do not infer a relationship merely because a passage mentions "
-    "the same topic.\n"
-    "7. If the evidence is insufficient, clearly state that the retrieved "
-    "passages do not establish the answer.\n"
-    "8. Never invent facts to satisfy the requested number of claims.\n\n"
-
-    "CITATION REQUIREMENTS:\n"
-    f"Allowed source IDs: {allowed_source_ids}.\n"
-    "1. Assign between one and three source IDs to each claim.\n"
-    "2. Select only sources that directly support that specific claim.\n"
-    "3. Use different source IDs when different evidence supports different parts.\n"
-    "4. Never invent source IDs or attach unrelated sources.\n"
-    "5. Keep source IDs separate from claim text; the application "
-    "will add inline citations.\n\n"
-
-    "QUESTION-FOCUSED ANSWERING:\n"
-    "1. Identify the exact information requested by the question before writing.\n"
-    "1a. When multiple passages contain different examples about the "
-         "same subject, identify the particular example that best answers "
-         "the user's question.\n"
-    "1b. Do not combine details from separate examples into one answer "
-         "unless the question explicitly asks for a comparison.\n"
-    "1c. If the question does not distinguish between multiple valid "
-         "examples, answer using the most directly relevant passage and "
-         "do not add unrelated examples.\n"
-    "1d. Before drafting the answer, identify the single passage that most "
-        "directly answers the question. Do not automatically prefer the first "
-        "or highest-ranked passage if it is only loosely related.\n"
-    "1e. Use that primary passage for the answer. Use another passage only "
-         "when the primary passage does not contain enough information to answer "
-         "the question, and ensure each added detail directly answers the question.\n"
-    "1f. Do not introduce a related concept, technical term, example, or "
-         "explanation merely because it appears in another retrieved passage.\n"
-
-    "2. Prefer the evidence passage that most directly answers that question.\n"
-    "3. For questions asking for a specific example, describe that example first.\n"
-    "4. Do not add other topics merely because they appear in the evidence.\n"
-    "5. Use only claims directly supported by the selected evidence.\n"
-    "6. If one passage fully answers the question, prefer one concise claim "
-    "rather than several loosely related claims.\n"
-    "7. Do not infer causes, consequences, or recommendations unless the "
-    "evidence explicitly supports them.\n"
-    "8. For questions about what the speaker says, report the speaker's "
-    "statements rather than presenting your own interpretation.\n\n"
-
-    "Return only the JSON object. Do not include Markdown fences "
-    "or additional commentary."
-)
-
-
-
-
+            f"{prompt}\n\n"
+            "STRUCTURED RESPONSE REQUIREMENT:\n"
+            "Return valid JSON matching the provided schema.\n\n"
+            "ANSWER REQUIREMENTS:\n"
+            "1. Answer the user's actual question directly.\n"
+            "2. Never repeat, paraphrase, or return the user's question as the answer.\n"
+            "3. Each claim's 'text' field must contain useful, informative content "
+            "that answers the question, not a question or a restatement.\n"
+            "4. For 'why' questions, explain reasons stated in the evidence. "
+            "Do not invent causes or mechanisms.\n"
+            "5. Prefer the most directly relevant evidence over loosely related passages.\n"
+            "6. Avoid vague claims, repetition, and unsupported interpretations.\n"
+            "7. Every claim must communicate a distinct fact or idea. "
+            "Do not restate the same idea using different words.\n"
+            "8. Do not force extra claims when the evidence supports fewer claims.\n"
+            "8. For process questions, explain steps in order only when the "
+            "retrieved passages establish that order.\n"
+            "9. Before returning JSON, verify that each claim answers the question "
+            "and is supported by its assigned source.\n\n"
+            "EVIDENCE REQUIREMENTS:\n"
+            "1. Use only the supplied retrieved passages as factual evidence.\n"
+            "2. Every claim must be directly supported by its assigned source.\n"
+            "3. A valid source ID does not mean the claim is supported.\n"
+            "4. Do not add causes, mechanisms, conclusions, recommendations, or "
+            "examples unless the assigned passage supports them.\n"
+            "5. Do not use general knowledge to fill gaps in the evidence.\n"
+            "6. Do not infer a relationship merely because a passage mentions "
+            "the same topic.\n"
+            "7. If the evidence is insufficient, clearly state that the retrieved "
+            "passages do not establish the answer.\n"
+            "8. Never invent facts to satisfy the requested number of claims.\n\n"
+            "CITATION REQUIREMENTS:\n"
+            f"Allowed source IDs: {allowed_source_ids}.\n"
+            "1. Assign between one and three source IDs to each claim.\n"
+            "2. Select only sources that directly support that specific claim.\n"
+            "3. Use different source IDs when different evidence supports different parts.\n"
+            "4. Never invent source IDs or attach unrelated sources.\n"
+            "5. Keep source IDs separate from claim text; the application "
+            "will add inline citations.\n\n"
+            "QUESTION-FOCUSED ANSWERING:\n"
+            "1. Identify the exact information requested by the question before writing.\n"
+            "1a. When multiple passages contain different examples about the "
+            "same subject, identify the particular example that best answers "
+            "the user's question.\n"
+            "1b. Do not combine details from separate examples into one answer "
+            "unless the question explicitly asks for a comparison.\n"
+            "1c. If the question does not distinguish between multiple valid "
+            "examples, answer using the most directly relevant passage and "
+            "do not add unrelated examples.\n"
+            "1d. Before drafting the answer, identify the single passage that most "
+            "directly answers the question. Do not automatically prefer the first "
+            "or highest-ranked passage if it is only loosely related.\n"
+            "1e. Use that primary passage for the answer. Use another passage only "
+            "when the primary passage does not contain enough information to answer "
+            "the question, and ensure each added detail directly answers the question.\n"
+            "1f. Do not introduce a related concept, technical term, example, or "
+            "explanation merely because it appears in another retrieved passage.\n"
+            "2. Prefer the evidence passage that most directly answers that question.\n"
+            "3. For questions asking for a specific example, describe that example first.\n"
+            "4. Do not add other topics merely because they appear in the evidence.\n"
+            "5. Use only claims directly supported by the selected evidence.\n"
+            "6. If one passage fully answers the question, prefer one concise claim "
+            "rather than several loosely related claims.\n"
+            "7. Do not infer causes, consequences, or recommendations unless the "
+            "evidence explicitly supports them.\n"
+            "8. For questions about what the speaker says, report the speaker's "
+            "statements rather than presenting your own interpretation.\n\n"
+            "Return only the JSON object. Do not include Markdown fences "
+            "or additional commentary.")
 
         is_security_question = bool(
             re.search(
@@ -2364,31 +2676,24 @@ CURRENT QUESTION:
                 "for that relationship. Otherwise, state that the "
                 "frame provides temporal context but does not "
                 "visually establish the discussed idea.\n"
-            )    
-
-
-
-        if is_process_question:
-            structured_prompt += (
-                "\n\nPROCESS QUESTION REQUIREMENTS:\n"
-                "Explain the process as distinct, ordered stages.\n"
-                "For this query, describe the following stages when "
-                "supported by the retrieved evidence:\n"
-                "1. Convert the user's question into an embedding.\n"
-                "2. Search FAISS for candidate passages, then apply "
-                "the configured relevance filtering and deduplication.\n"
-                "3. Rerank the candidates and select the relevant passages.\n"
-                "4. Assemble the labeled evidence into the prompt and "
-                "generate the answer with Ollama.\n"
-                "Explain what happens at each stage rather than merely "
-                "naming retrieval and generation.\n"
-                "Each claim must describe a DIFFERENT stage.\n"
-                "Never repeat the same fact to fill the required claim count.\n"
-                "Use only details supported by the retrieved evidence."
             )
 
-
-
+        if is_process_question:
+            structured_prompt += ("\n\nPROCESS QUESTION REQUIREMENTS:\n"
+                                  "Explain the process as distinct, ordered stages.\n"
+                                  "For this query, describe the following stages when "
+                                  "supported by the retrieved evidence:\n"
+                                  "1. Convert the user's question into an embedding.\n"
+                                  "2. Search FAISS for candidate passages, then apply "
+                                  "the configured relevance filtering and deduplication.\n"
+                                  "3. Rerank the candidates and select the relevant passages.\n"
+                                  "4. Assemble the labeled evidence into the prompt and "
+                                  "generate the answer with Ollama.\n"
+                                  "Explain what happens at each stage rather than merely "
+                                  "naming retrieval and generation.\n"
+                                  "Each claim must describe a DIFFERENT stage.\n"
+                                  "Never repeat the same fact to fill the required claim count.\n"
+                                  "Use only details supported by the retrieved evidence.")
 
         generation_started = perf_counter()
         print(
@@ -2430,20 +2735,20 @@ CURRENT QUESTION:
         claims = parsed_answer.get("claims")
 
         if not isinstance(claims, list):
-            raise ValueError("The structured response has no valid claims list.")
-      
-        formatted_claims = []
+            raise ValueError(
+                "The structured response has no valid claims list.")
 
+        formatted_claims = []
 
         # Remove repetitive claims while preserving their citations.
         selected_claims: list[tuple[str, set[str], list[int]]] = []
         source_media_types = {
             int(record["id"]): (
-            (record.get("doc").metadata or {}).get("media_type")
-            ) 
+                (record.get("doc").metadata or {}).get("media_type")
+            )
             for record in records
             if record.get("id") is not None and record.get("doc") is not None
-            }
+        }
 
         print(f"[SOURCE MEDIA TYPES] {source_media_types}", flush=True)
 
@@ -2458,11 +2763,11 @@ CURRENT QUESTION:
 
         source_names = {
             int(record["id"]): (
-            record["doc"].metadata or {}
+                record["doc"].metadata or {}
             ).get("source")
             for record in records
             if record.get("id") is not None and record.get("doc") is not None
-}
+        }
 
         print(f"[SOURCE TIMESTAMPS] {source_timestamps}", flush=True)
 
@@ -2509,7 +2814,8 @@ CURRENT QUESTION:
                 )
 
                 # Let deterministic code handle all visual descriptions.
-                # Ollama should provide transcript-based discussion claims only.
+                # Ollama should provide transcript-based discussion claims
+                # only.
                 if claim_mentions_visuals:
                     print(
                         "[CLAIM VALIDATION] Rejected model-generated "
@@ -2558,7 +2864,7 @@ CURRENT QUESTION:
                         old_text,
                         old_words,
                         merged_source_ids,
-                   )
+                    )
             elif len(selected_claims) < maximum_claims:
                 selected_claims.append(new_claim)
 
@@ -2581,7 +2887,8 @@ CURRENT QUESTION:
                         continue
 
                     # Ensure the frame and transcript belong to the same video.
-                    if source_names.get(frame_id) != source_names.get(transcript_id):
+                    if source_names.get(
+                            frame_id) != source_names.get(transcript_id):
                         continue
 
                     transcript_times = source_timestamps[transcript_id]
@@ -2622,7 +2929,8 @@ CURRENT QUESTION:
                 frame_content = frame_record["doc"].page_content.strip()
 
                 if "\n" in frame_content:
-                    visual_description = frame_content.split("\n", 1)[1].strip()
+                    visual_description = frame_content.split("\n", 1)[
+                        1].strip()
                 else:
                     visual_description = frame_content
 
@@ -2653,8 +2961,7 @@ CURRENT QUESTION:
                     f"to "
                     f"{format_video_timestamp(transcript_times['end_seconds'])}. "
                     f"This establishes temporal alignment, not necessarily "
-                    f"a direct visual illustration of the spoken topic."
-                )
+                    f"a direct visual illustration of the spoken topic.")
 
                 visual_words = {
                     word
@@ -2675,8 +2982,7 @@ CURRENT QUESTION:
                     f"matched Transcript Source {matching_transcript_id} "
                     f"at {format_video_timestamp(frame_timestamp)}",
                     flush=True,
-                )        
-
+                )
 
         # Keep timestamped visual evidence in chronological order.
         if is_video_transcript_question and is_video_visual_question:
@@ -2706,7 +3012,7 @@ CURRENT QUESTION:
                 claim_item
                 for _, claim_item in timestamped_visual_claims
             ]
-        
+
         formatted_claims = [
             f"{text} "
             + " ".join(
@@ -2722,7 +3028,6 @@ CURRENT QUESTION:
             raise ValueError(
                 "Ollama returned no usable claims with source citations."
             )
-
 
     except requests.exceptions.ConnectionError:
         return {
@@ -2781,8 +3086,9 @@ CURRENT QUESTION:
     }
 
 
-
-def update_persistent_memory(user_message: str, assistant_message: str) -> None:
+def update_persistent_memory(
+        user_message: str,
+        assistant_message: str) -> None:
     """Update persistent facts and summary from a completed conversation turn."""
     if not user_message.strip() or not assistant_message.strip():
         return
@@ -2871,8 +3177,8 @@ LATEST ASSISTANT RESPONSE:
         print(f"Persistent memory update failed: {exc}")
 
 
-
-def add_chat_message(role: str, content: str, result: dict[str, Any] | None = None) -> None:
+def add_chat_message(role: str, content: str,
+                     result: dict[str, Any] | None = None) -> None:
     message: dict[str, Any] = {"role": role, "content": content}
     if result is not None:
         message["sources"] = result.get("sources", [])
@@ -2890,11 +3196,13 @@ st.caption(
 
 with st.sidebar:
     st.header("Workspace")
-    source_mode = st.radio(
-        "Choose your workspace",
-        ["All sources", "PDFs and text only", "Uploaded videos only", "Uploaded images only"],
-        key="source_mode",
-    )
+    source_mode = st.radio("Choose your workspace",
+                           ["All sources",
+                            "PDFs and text only",
+                            "Uploaded videos only",
+                            "Uploaded images only"],
+                           key="source_mode",
+                           )
     st.divider()
 
     # ---------- Conditional document uploader ----------
@@ -2907,7 +3215,9 @@ with st.sidebar:
             key="document_uploader",
             help="Select one or more PDF/TXT files to add to this session.",
         )
-        if st.button("Process uploaded documents", key="process_uploaded_documents"):
+        if st.button(
+            "Process uploaded documents",
+                key="process_uploaded_documents"):
             if not uploaded_documents:
                 st.warning("Please select at least one PDF or TXT file.")
             else:
@@ -2929,15 +3239,15 @@ with st.sidebar:
                     if len(file_bytes) > MAX_DOCUMENT_SIZE:
                         st.warning(
                             f"{uploaded_file.name} exceeds the 25 MB upload limit. "
-                            "Please upload a smaller file."
-                       )
+                            "Please upload a smaller file.")
                         continue
 
                     file_hash = hashlib.sha256(file_bytes).hexdigest()
                     if file_hash in st.session_state.processed_document_hashes:
                         already_name = st.session_state.processed_document_hashes[file_hash]
                         st.session_state.active_document_name = already_name
-                        st.info(f"Already processed in this session: {already_name}")
+                        st.info(
+                            f"Already processed in this session: {already_name}")
                         continue
                     if file_hash in seen_hashes_this_batch:
                         continue
@@ -2946,14 +3256,15 @@ with st.sidebar:
                     original_name = Path(uploaded_file.name).name
 
                     if not original_name or original_name in {".", ".."}:
-                       st.warning("Invalid uploaded filename.")
-                       continue
+                        st.warning("Invalid uploaded filename.")
+                        continue
 
                     suffix = Path(original_name).suffix.lower()
 
                     if suffix not in {".pdf", ".txt"}:
-                       st.warning(f"Unsupported file extension: {original_name}")
-                       continue
+                        st.warning(
+                            f"Unsupported file extension: {original_name}")
+                        continue
 
                     temp_path: Path | None = None
                     try:
@@ -2963,18 +3274,20 @@ with st.sidebar:
 
                         if suffix == ".pdf":
                             if not file_bytes.startswith(b"%PDF-"):
-                                st.warning(f"{original_name} is not a valid PDF file.")
+                                st.warning(
+                                    f"{original_name} is not a valid PDF file.")
                                 continue
 
                             loader = PyPDFLoader(str(temp_path))
 
                         elif suffix == ".txt":
-                            loader = TextLoader(str(temp_path), encoding="utf-8")
+                            loader = TextLoader(
+                                str(temp_path), encoding="utf-8")
 
                         loaded_docs = [
                             doc for doc in loader.load()
                             if doc.page_content.strip()
-                            ]
+                        ]
 
                         if suffix == ".txt" and loaded_docs:
                             text_splitter = RecursiveCharacterTextSplitter(
@@ -2983,19 +3296,19 @@ with st.sidebar:
                                 separators=["\n\n", "\n", ". ", " ", ""],
                             )
 
-                            loaded_docs = text_splitter.split_documents(loaded_docs)
+                            loaded_docs = text_splitter.split_documents(
+                                loaded_docs)
 
                             print(
                                 f"[TXT CHUNKING] {original_name}: "
                                 f"{len(loaded_docs)} chunks created",
                                 flush=True,
                             )
- 
+
                         if not loaded_docs:
                             st.warning(
                                 f"No extractable text found in {uploaded_file.name}. "
-                                "Scanned PDFs may require OCR."
-                            )
+                                "Scanned PDFs may require OCR.")
                             continue
 
                         for doc in loaded_docs:
@@ -3005,7 +3318,8 @@ with st.sidebar:
                             metadata["media_type"] = "uploaded_document"
                             doc.metadata = metadata
 
-                        full_text = "\n\n".join(doc.page_content for doc in loaded_docs)
+                        full_text = "\n\n".join(
+                            doc.page_content for doc in loaded_docs)
                         newly_loaded.append({
                             "hash": file_hash,
                             "name": uploaded_file.name,
@@ -3016,8 +3330,7 @@ with st.sidebar:
                     except Exception as exc:
                         print(
                             f"Document processing failed for {uploaded_file.name}: "
-                            f"{exc}"
-                        )
+                            f"{exc}")
                         traceback.print_exc()
                         st.error(
                             f"Could not process {uploaded_file.name}. "
@@ -3036,11 +3349,10 @@ with st.sidebar:
                     try:
                         if st.session_state.document_vectorstore is None:
                             st.session_state.document_vectorstore = FAISS.from_documents(
-                                all_docs_to_add,
-                                rag.MiniLMEmbeddings(),
-                            )
+                                all_docs_to_add, rag.MiniLMEmbeddings(), )
                         else:
-                            st.session_state.document_vectorstore.add_documents(all_docs_to_add)
+                            st.session_state.document_vectorstore.add_documents(
+                                all_docs_to_add)
 
                         for item in newly_loaded:
                             name = item["name"]
@@ -3051,8 +3363,7 @@ with st.sidebar:
 
                         st.success(
                             f"Processed {len(newly_loaded)} new file(s), adding "
-                            f"{len(all_docs_to_add)} PDF page(s)/text section(s) to the session index."
-                        )
+                            f"{len(all_docs_to_add)} PDF page(s)/text section(s) to the session index.")
                     except Exception as exc:
                         print(f"Document indexing failed: {exc}")
                         traceback.print_exc()
@@ -3062,10 +3373,8 @@ with st.sidebar:
                         )
 
         if st.session_state.uploaded_document_text:
-            st.caption(f"Processed documents: {len(st.session_state.uploaded_document_text)}")
-
-
-
+            st.caption(
+                f"Processed documents: {len(st.session_state.uploaded_document_text)}")
 
     def process_document_uploads(uploaded_documents):
         """Validate, extract, and index uploaded PDF/TXT files."""
@@ -3158,10 +3467,10 @@ with st.sidebar:
                     loaded_docs = text_splitter.split_documents(loaded_docs)
 
                     print(
-                            f"[TXT CHUNKING] {original_name}: "
-                            f"{len(loaded_docs)} chunks created",
-                            flush=True,
-                        )
+                        f"[TXT CHUNKING] {original_name}: "
+                        f"{len(loaded_docs)} chunks created",
+                        flush=True,
+                    )
 
                 if not loaded_docs:
                     st.warning(
@@ -3237,8 +3546,7 @@ with st.sidebar:
 
             st.success(
                 f"Processed {len(newly_loaded)} new file(s), adding "
-                 f"{len(all_docs_to_add)} page(s)/text section(s) to the session index."
-            )
+                f"{len(all_docs_to_add)} page(s)/text section(s) to the session index.")
 
         except Exception as exc:
             print(
@@ -3266,7 +3574,9 @@ with st.sidebar:
             key="image_uploader",
             help="Image descriptions can also be searched in the current session.",
         )
-        if st.button("Describe uploaded images", key="process_uploaded_images"):
+        if st.button(
+            "Describe uploaded images",
+                key="process_uploaded_images"):
             if not uploaded_images:
                 st.warning("Please select at least one image.")
             else:
@@ -3276,38 +3586,38 @@ with st.sidebar:
                     image_bytes = uploaded_image.getvalue()
 
                     if not image_bytes:
-                       st.warning(f"{uploaded_image.name} is empty.")
-                       continue
+                        st.warning(f"{uploaded_image.name} is empty.")
+                        continue
 
                     # Keep image uploads moderate to limit local memory use.
                     if len(image_bytes) > 10 * 1024 * 1024:
                         st.warning(
                             f"{uploaded_image.name} is larger than 10 MB. "
-                                "Please resize it and upload it again."
-                                )
+                            "Please resize it and upload it again."
+                        )
                         continue
 
                     image_hash = hashlib.sha256(image_bytes).hexdigest()
 
                     # Verify the actual image format.
                     image_signatures = {
-                         ".png": image_bytes.startswith(b"\x89PNG\r\n\x1a\n"),
-                         ".jpg": image_bytes.startswith(b"\xff\xd8\xff"),
-                         ".jpeg": image_bytes.startswith(b"\xff\xd8\xff"),
-                         ".webp": (
-                               len(image_bytes) >= 12
-                               and image_bytes.startswith(b"RIFF")
-                               and image_bytes[8:12] == b"WEBP"
-                            ),
-                           ".bmp": image_bytes.startswith(b"BM"),
-                        }
+                        ".png": image_bytes.startswith(b"\x89PNG\r\n\x1a\n"),
+                        ".jpg": image_bytes.startswith(b"\xff\xd8\xff"),
+                        ".jpeg": image_bytes.startswith(b"\xff\xd8\xff"),
+                        ".webp": (
+                            len(image_bytes) >= 12
+                            and image_bytes.startswith(b"RIFF")
+                            and image_bytes[8:12] == b"WEBP"
+                        ),
+                        ".bmp": image_bytes.startswith(b"BM"),
+                    }
 
                     image_suffix = Path(uploaded_image.name).suffix.lower()
 
                     if not image_signatures.get(image_suffix, False):
                         st.warning(
-                        f"{uploaded_image.name} does not match its declared image format."
-                       )
+                            f"{uploaded_image.name} does not match its declared image format."
+                        )
                         continue
 
                     # Verify that Pillow can decode the uploaded image.
@@ -3315,30 +3625,28 @@ with st.sidebar:
                     try:
                         with Image.open(io.BytesIO(image_bytes)) as img:
                             if img.width * img.height > 25_000_000:
-                                raise ValueError("Image exceeds the 25-megapixel limit.")
+                                raise ValueError(
+                                    "Image exceeds the 25-megapixel limit.")
 
                             img.verify()
 
                     except Exception as exc:
                         print(
                             f"Image validation failed for {uploaded_image.name}: "
-                            f"{type(exc).__name__}: {exc}"
-                        )
+                            f"{type(exc).__name__}: {exc}")
                         st.warning(
                             f"{uploaded_image.name} is invalid or cannot be processed. "
-                            "Please upload a valid image file."
-                        )
+                            "Please upload a valid image file.")
                         continue
 
                     if image_hash in st.session_state.processed_images:
                         existing_name = st.session_state.processed_images[image_hash]
-                        st.info(f"Already described in this session: {existing_name}")
+                        st.info(
+                            f"Already described in this session: {existing_name}")
                         continue
 
                     existing_batch_image = next(
-                        (item for item in newly_described if item["hash"] == image_hash),
-                        None,
-                        )
+                        (item for item in newly_described if item["hash"] == image_hash), None, )
 
                     if existing_batch_image is not None:
                         st.info(
@@ -3375,8 +3683,7 @@ with st.sidebar:
                     except Exception as exc:
                         print(
                             f"Image description failed for {uploaded_image.name}: "
-                            f"{type(exc).__name__}: {exc}"
-                        )
+                            f"{type(exc).__name__}: {exc}")
                         traceback.print_exc()
 
                         st.error(
@@ -3388,20 +3695,19 @@ with st.sidebar:
                     try:
                         if st.session_state.image_vectorstore is None:
                             st.session_state.image_vectorstore = FAISS.from_documents(
-                                image_docs_to_add,
-                                rag.MiniLMEmbeddings(),
-                            )
+                                image_docs_to_add, rag.MiniLMEmbeddings(), )
                         else:
-                            st.session_state.image_vectorstore.add_documents(image_docs_to_add)
+                            st.session_state.image_vectorstore.add_documents(
+                                image_docs_to_add)
 
                         for item in newly_described:
-                            st.session_state.processed_images[item["hash"]] = item["name"]
+                            st.session_state.processed_images[item["hash"]
+                                                              ] = item["name"]
                             st.session_state.image_descriptions[item["hash"]] = item
 
                         st.success(
                             f"Described {len(newly_described)} image(s) and added their descriptions "
-                            "to this session's searchable image collection."
-                        )
+                            "to this session's searchable image collection.")
                     except Exception as exc:
                         print(
                             f"Image FAISS indexing failed: "
@@ -3411,8 +3717,7 @@ with st.sidebar:
 
                         st.error(
                             "The images were described, but indexing failed because of an internal error. "
-                            "Please try uploading the images again."
-                        )
+                            "Please try uploading the images again.")
 
         if st.session_state.image_descriptions:
             with st.expander("Images described in this session"):
@@ -3457,8 +3762,7 @@ with st.sidebar:
             if already_ingested:
                 st.success(
                     "This transcript has already been indexed in this session: "
-                    f"{st.session_state.processed_transcript_hashes[transcript_hash]}"
-                )
+                    f"{st.session_state.processed_transcript_hashes[transcript_hash]}")
 
             if st.button(
                 "Index full transcript",
@@ -3467,7 +3771,8 @@ with st.sidebar:
                 key="index_timestamped_transcript",
             ):
                 try:
-                    transcript_text = transcript_bytes.decode("utf-8-sig").strip()
+                    transcript_text = transcript_bytes.decode(
+                        "utf-8-sig").strip()
 
                     if not transcript_text:
                         st.warning("The uploaded transcript file is empty.")
@@ -3483,13 +3788,10 @@ with st.sidebar:
                         ):
                             if st.session_state.video_vectorstore is None:
                                 st.session_state.video_vectorstore = FAISS.from_documents(
-                                    transcript_docs,
-                                    rag.MiniLMEmbeddings(),
-                                )
+                                    transcript_docs, rag.MiniLMEmbeddings(), )
                             else:
                                 st.session_state.video_vectorstore.add_documents(
-                                    transcript_docs
-                                )
+                                    transcript_docs)
 
                         st.session_state.processed_transcript_hashes[
                             transcript_hash
@@ -3505,12 +3807,10 @@ with st.sidebar:
 
                         st.success(
                             f"Indexed {len(transcript_docs)} timestamped chunks "
-                            f"from {uploaded_transcript.name}."
-                        )
+                            f"from {uploaded_transcript.name}.")
                         st.caption(
                             "The transcript is searchable in this session under "
-                            "'Uploaded videos only' and 'All sources'."
-                        )
+                            "'Uploaded videos only' and 'All sources'.")
 
                 except Exception as exc:
                     print(f"Timestamped transcript indexing failed: {exc}")
@@ -3525,11 +3825,17 @@ with st.sidebar:
         st.subheader("Upload a video")
         st.caption(
             "Speech is transcribed locally. Up to 8 sampled frames are described locally. "
-            "The first run may download the Whisper model."
-        )
+            "The first run may download the Whisper model.")
         uploaded_video = st.file_uploader(
             "Choose a video file",
-            type=["mp4", "mov", "mkv", "webm", "avi", "mpeg", "mpg"],
+            type=[
+                "mp4",
+                "mov",
+                "mkv",
+                "webm",
+                "avi",
+                "mpeg",
+                "mpg"],
             accept_multiple_files=False,
             key="video_uploader",
             help="Video vectors are added only to this session; the saved FAISS index is not changed.",
@@ -3544,7 +3850,7 @@ with st.sidebar:
             elif len(video_bytes) > MAX_VIDEO_SIZE_BYTES:
                 st.error(
                     f"Video exceeds the {MAX_VIDEO_SIZE_MB} MB upload limit."
-            )
+                )
                 video_is_valid = False
 
             video_hash = hashlib.sha256(video_bytes).hexdigest()
@@ -3552,7 +3858,8 @@ with st.sidebar:
                 video_hash in st.session_state.processed_videos
             )
             if already_processed:
-                st.success(f"Already processed in this session: {uploaded_video.name}")
+                st.success(
+                    f"Already processed in this session: {uploaded_video.name}")
             if st.button(
                 "Process uploaded video",
                 type="primary",
@@ -3593,13 +3900,13 @@ with st.sidebar:
                     if result.documents:
                         if st.session_state.video_vectorstore is None:
                             st.session_state.video_vectorstore = FAISS.from_documents(
-                                result.documents,
-                                rag.MiniLMEmbeddings(),
-                            )
+                                result.documents, rag.MiniLMEmbeddings(), )
                         else:
-                            st.session_state.video_vectorstore.add_documents(result.documents)
+                            st.session_state.video_vectorstore.add_documents(
+                                result.documents)
 
-                    # Keep explanation generation separate so it cannot prevent indexing.
+                    # Keep explanation generation separate so it cannot prevent
+                    # indexing.
                     try:
                         with st.spinner("Generating a grounded video explanation..."):
                             explanation = generate_video_explanation(result)
@@ -3622,13 +3929,18 @@ with st.sidebar:
                         "duration_seconds": result.duration_seconds,
                         "warnings": result.warnings,
                     }
-                    st.success(f"Video added to this session: {uploaded_video.name}")
-                    st.write(f"Transcript chunks: **{result.transcript_chunks}**")
-                    st.write(f"Frame descriptions: **{result.frame_descriptions}**")
+                    st.success(
+                        f"Video added to this session: {uploaded_video.name}")
+                    st.write(
+                        f"Transcript chunks: **{result.transcript_chunks}**")
+                    st.write(
+                        f"Frame descriptions: **{result.frame_descriptions}**")
                     if result.duration_seconds:
-                        st.write(f"Video duration: **{result.duration_seconds / 60:.1f} minutes**")
+                        st.write(
+                            f"Video duration: **{result.duration_seconds / 60:.1f} minutes**")
                     if result.detected_language != "Unknown":
-                        st.write(f"Detected speech language: **{result.detected_language}**")
+                        st.write(
+                            f"Detected speech language: **{result.detected_language}**")
                     for warning in result.warnings:
                         st.warning(warning)
                 except Exception as exc:
@@ -3650,13 +3962,15 @@ with st.sidebar:
                 for info in st.session_state.processed_videos.values():
                     st.write(
                         f"**{info['name']}** — {info['transcript_chunks']} transcript chunks · "
-                        f"{info['frame_descriptions']} visual descriptions"
-                    )
-                if st.button("Clear uploaded-video context", key="clear_video_context"):
+                        f"{info['frame_descriptions']} visual descriptions")
+                if st.button(
+                    "Clear uploaded-video context",
+                        key="clear_video_context"):
                     st.session_state.video_vectorstore = None
                     st.session_state.processed_videos = {}
                     st.session_state.video_explanations = {}
-                    st.success("Uploaded-video context cleared. The saved FAISS index was not changed.")
+                    st.success(
+                        "Uploaded-video context cleared. The saved FAISS index was not changed.")
 
 
 # ---------- Main workspace ----------
@@ -3803,6 +4117,7 @@ Return only the requested summary or key points.
 # ---------- Normal question-answering workspace ----------
 
 # ---------- Main workspace ----------
+
 
 question_scope = "All enabled sources"
 
@@ -3980,9 +4295,6 @@ if chat_submission:
                     except OSError as exc:
                         print(f"Temporary video cleanup failed: {exc}")
 
-        add_chat_message("user", question)
-
-
         # Process image attachments from the chat (+) button.
         image_extensions = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
 
@@ -4045,7 +4357,8 @@ if chat_submission:
             try:
                 with Image.open(io.BytesIO(image_bytes)) as img:
                     if img.width * img.height > 25_000_000:
-                        raise ValueError("Image exceeds the 25-megapixel limit.")
+                        raise ValueError(
+                            "Image exceeds the 25-megapixel limit.")
 
                     img.verify()
 
@@ -4056,8 +4369,7 @@ if chat_submission:
                 )
                 st.warning(
                     f"{uploaded_image.name} is invalid or cannot be processed. "
-                    "Please upload a valid image file."
-                )
+                    "Please upload a valid image file.")
                 continue
 
             # Handle images already processed in this session.
@@ -4147,7 +4459,8 @@ if chat_submission:
                     )
 
                 for item in newly_described_images:
-                    st.session_state.processed_images[item["hash"]] = item["name"]
+                    st.session_state.processed_images[item["hash"]
+                                                      ] = item["name"]
                     st.session_state.image_descriptions[item["hash"]] = item
 
                 st.success(
@@ -4168,19 +4481,128 @@ if chat_submission:
                 chat_attached_image_hash = None
                 chat_attached_image_hashes = []
 
-
         if image_attachment_attempted and not chat_attached_image_hashes:
             st.session_state.selected_image_descriptions = []
             st.session_state.selected_image_description = None
 
         if chat_attached_image_hashes:
             st.session_state.selected_image_descriptions = (
-            chat_attached_image_hashes.copy()
-           )
+                chat_attached_image_hashes.copy()
+            )
 
             st.session_state.selected_image_description = (
-            chat_attached_image_hashes[-1]
-        )
+                chat_attached_image_hashes[-1]
+            )
+
+        # Capture previous conversation BEFORE adding the current question.
+        conversation_history = get_recent_chat_history()
+
+        # Create a fresh execution context for this submission.
+        question_context = None
+
+        # Build a diagnostic execution plan without changing answer routing.
+        try:
+            # Read persistent facts and summary separately.
+            memory_data = load_persistent_memory()
+
+            if not isinstance(memory_data, dict):
+                memory_data = {}
+
+            memory_parts = []
+
+            facts = memory_data.get("facts", {})
+
+            if isinstance(facts, dict) and facts:
+                memory_parts.append(
+                    "PERSISTENT FACTS:\n"
+                    + "\n".join(
+                        f"- {key}: {value}"
+                        for key, value in facts.items()
+                    )
+                )
+
+            summary = memory_data.get("summary", "")
+
+            if isinstance(summary, str) and summary.strip():
+                memory_parts.append(
+                    "CONVERSATION SUMMARY:\n" + summary.strip()
+                )
+
+            persistent_memory_text = "\n\n".join(memory_parts)
+
+            # Interpret the question using previous conversation context.
+            context_interpretation = interpret_conversation_context(
+                question,
+                conversation_history=conversation_history,
+                persistent_memory=persistent_memory_text,
+            )
+
+            # Inspect evidence stores AFTER all attachments are processed.
+            available_sources = get_available_evidence_sources(
+                selected_document=selected_document,
+                selected_only=(
+                    question_scope == "Selected document"
+                ),
+            )
+
+            # Build and validate the execution plan.
+            execution_context = build_execution_context(
+                question,
+                context_interpretation,
+                source_scope=source_mode,
+                selected_document=selected_document,
+            )
+
+            readiness = check_execution_readiness(
+                execution_context,
+                available_sources=available_sources,
+                source_mode=source_mode,
+                selected_document=selected_document,
+                question_scope=question_scope,
+                conversation_available=bool(
+                    conversation_history.strip()
+                    or persistent_memory_text.strip()
+                ),
+            )
+
+            # Create the shared context for downstream generation routes.
+            question_context = {
+                "original_question": question,
+                "normalized_query": context_interpretation["normalized_query"],
+                "context_interpretation": context_interpretation,
+                "execution_context": execution_context,
+                "readiness": readiness,
+            }
+
+            # Keep diagnostics in the current Streamlit session.
+            st.session_state["last_execution_context"] = (
+                execution_context
+            )
+
+            st.session_state["last_execution_readiness"] = readiness
+
+            print(
+                "EXECUTION PLAN DIAGNOSTICS:",
+                {
+                    "request_type": execution_context["request_type"],
+                    "operation": execution_context["task_plan"]["operation"],
+                    "retrieval_mode": execution_context["evidence_plan"]["retrieval_mode"],
+                    "required_modalities": execution_context["evidence_plan"]["required_modalities"],
+                    "readiness": readiness["ready"],
+                    "blockers": readiness["blockers"],
+                    "warnings": readiness["warnings"],
+                },
+                flush=True,
+            )
+
+        except Exception as exc:
+            print(
+                f"Execution planning diagnostic failed: "
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
+
+            traceback.print_exc()
 
         add_chat_message("user", question)
 
@@ -4192,19 +4614,19 @@ if chat_submission:
                 question_lower = question.lower()
 
                 image_keywords = (
-                        "image",
-                        "picture",
-                        "photo",
-                        "screenshot",
-                        "diagram",
-                    )
+                    "image",
+                    "picture",
+                    "photo",
+                    "screenshot",
+                    "diagram",
+                )
 
                 image_descriptions = st.session_state.image_descriptions
 
                 asks_about_image = any(
-                        keyword in question_lower
-                        for keyword in image_keywords
-                    )
+                    keyword in question_lower
+                    for keyword in image_keywords
+                )
 
                 has_attached_image = bool(
                     st.session_state.get("selected_image_description")
@@ -4217,24 +4639,20 @@ if chat_submission:
                     and (asks_about_image or has_attached_image)
                     and bool(image_descriptions)
                     and source_mode in ("All sources", "Uploaded images only")
-               )
+                )
 
                 if can_answer_from_image:
                     attached_image_infos = [
-                            image_descriptions[image_hash]
-                            for image_hash in chat_attached_image_hashes
-                            if image_hash in image_descriptions
-                        ]
-
+                        image_descriptions[image_hash]
+                        for image_hash in chat_attached_image_hashes
+                        if image_hash in image_descriptions
+                    ]
 
                     descriptions_for_prompt = "\n\n".join(
-                       (
-                            f"IMAGE {i}: {info.get('name', 'Uploaded image')}\n"
-                            f"DESCRIPTION:\n"
-                            f"{str(info.get('description', '')).strip()}"
-                        )
-                        for i, info in enumerate(attached_image_infos, start=1)
-                    )
+                        (f"IMAGE {i}: {info.get('name', 'Uploaded image')}\n"
+                         f"DESCRIPTION:\n"
+                         f"{str(info.get('description', '')).strip()}") for i, info in enumerate(
+                            attached_image_infos, start=1))
 
                     if descriptions_for_prompt:
                         word_count_match = re.search(
@@ -4253,6 +4671,14 @@ if chat_submission:
                             f"Write exactly {requested_words} words."
                             if requested_words
                             else "Answer clearly and concisely."
+                        )
+
+                        # Resolve conversational references while preserving
+                        # original instructions.
+                        image_context_question = (
+                            question_context["normalized_query"]
+                            if question_context
+                            else question
                         )
 
                         image_prompt = f"""
@@ -4276,12 +4702,14 @@ Instructions:
 UPLOADED IMAGE DESCRIPTIONS:
 {descriptions_for_prompt}
 
-USER QUESTION:
+CONTEXT-RESOLVED QUESTION:
+{image_context_question}
+
+ORIGINAL USER INSTRUCTIONS:
 {question}
 
 {length_instruction}
 """
-
                         try:
                             generated_answer = response_text(
                                 rag.generate_ollama_response(image_prompt)
@@ -4294,9 +4722,8 @@ USER QUESTION:
                                 )
                             if requested_words and generated_answer:
                                 for attempt in range(3):
-                                    actual_words = len(
-                                        re.findall(r"\b[\w’'-]+\b", generated_answer)
-                                    )
+                                    actual_words = len(re.findall(
+                                        r"\b[\w’'-]+\b", generated_answer))
 
                                     if actual_words == requested_words:
                                         break
@@ -4319,8 +4746,7 @@ Current answer:
 """
 
                                     corrected_answer = response_text(
-                                        rag.generate_ollama_response(correction_prompt)
-                                    )
+                                        rag.generate_ollama_response(correction_prompt))
 
                                     if not corrected_answer:
                                         break
@@ -4363,12 +4789,12 @@ Current answer:
                             "answer": (
                                 "The selected image has no saved description. "
                                 "Please process the image again."
-                        ),
-                        "sources": [],
-                        "warning": None,
-                        "generation_seconds": None,
-                        "retrieval_count": 0,
-                    }
+                            ),
+                            "sources": [],
+                            "warning": None,
+                            "generation_seconds": None,
+                            "retrieval_count": 0,
+                        }
 
                 else:
                     # Handle document requests using natural-language intent.
@@ -4376,7 +4802,7 @@ Current answer:
                         chat_uploaded_documents[-1]
                         if chat_uploaded_documents
                         else selected_document
-                        )
+                    )
 
                     print("\n========== DOCUMENT ROUTING DEBUG ==========")
                     print("Question:", question)
@@ -4389,6 +4815,34 @@ Current answer:
                     )
                     print("============================================\n")
                     question_lower = question.lower()
+
+                    # Read the validated execution plan for document routing.
+                    execution_plan = (
+                        question_context.get("execution_context", {})
+                        if isinstance(question_context, dict)
+                        else {}
+                    )
+
+                    task_plan = execution_plan.get("task_plan", {})
+                    response_plan = execution_plan.get("response_plan", {})
+
+                    planned_operation = (
+                        task_plan.get("operation")
+                        if isinstance(task_plan, dict)
+                        else None
+                    )
+
+                    planned_intent = (
+                        task_plan.get("intent")
+                        if isinstance(task_plan, dict)
+                        else None
+                    )
+
+                    planned_format = (
+                        response_plan.get("format")
+                        if isinstance(response_plan, dict)
+                        else None
+                    )
 
                     # Detect document summary requests.
                     summary_keywords = (
@@ -4405,35 +4859,72 @@ Current answer:
                         "important points",
                     )
 
-                    if filename and any(
-                        keyword in question_lower
-                        for keyword in summary_keywords
-                    ):
+                    # Determine the document operation from the validated plan.
+                    use_planned_summary = (
+                        planned_operation == "summarize"
+                    )
+
+                    use_planned_keypoints = (
+                        planned_operation == "extract"
+                        and planned_intent == "extraction"
+                        and planned_format == "bullet_list"
+                    )
+
+                    # Use the planner when a valid execution context exists.
+                    if filename and question_context and use_planned_summary:
+
                         result = summarize_selected_document(
                             filename,
                             "Summarize the content",
+                            question_context=question_context,
                         )
 
-                    elif filename and any(
-                        keyword in question_lower
-                        for keyword in keypoint_keywords
-                    ):
+                    elif filename and question_context and use_planned_keypoints:
+
                         result = summarize_selected_document(
                             filename,
                             "Extract key points",
+                            question_context=question_context,
+                        )
+
+                    # Preserve keyword-based fallback if planning failed.
+                    elif filename and question_context is None and any(
+                        keyword in question_lower
+                        for keyword in summary_keywords
+                    ):
+
+                        result = summarize_selected_document(
+                            filename,
+                            "Summarize the content",
+                            question_context=question_context,
+                        )
+
+                    elif filename and question_context is None and any(
+                        keyword in question_lower
+                        for keyword in keypoint_keywords
+                    ):
+
+                        result = summarize_selected_document(
+                            filename,
+                            "Extract key points",
+                            question_context=question_context,
                         )
 
                     elif chat_uploaded_documents:
+
                         result = answer_from_selected_document(
                             question,
                             chat_uploaded_documents[-1],
+                            question_context=question_context,
                         )
 
                     else:
+
                         result = answer_question(
                             question,
                             selected_document,
                             question_scope,
+                            question_context=question_context,
                         )
 
             st.markdown(result["answer"])
@@ -4455,8 +4946,6 @@ Current answer:
             result,
         )
         update_persistent_memory(question, result["answer"])
-
-
 
 
 # ---------- Small footer/status ----------
